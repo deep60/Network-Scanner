@@ -81,4 +81,3 @@ fn main() {
 
     save_to_pcap(&clients, filename);
 }
-
