@@ -1,7 +1,10 @@
 [package]
 name = "network_scanner"
 version = "0.1.0"
+authors = ["P Deepanshu"]
 edition = "2021"
+repository = "https://github.com/deep60/network_scanner"
+license = "MIT"
 
 [dependencies]
 pnet = "0.9.0"
