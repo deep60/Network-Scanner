@@ -1,3 +1,10 @@
+use std::collections::HashSet;
+use std::fs::{File, OpenOptions};
+use std::io::{Read, Write};
+use std::net::IpAddr;
+use std::path::Path;
+use std::str::FromStr;
+
 pub fn parse_cidr(cidr: &str) -> Result<(IpAddr, u8), String> {
     let parts: Vec<&str> = cidr.split('/').collect();
     if parts.len() != 2 {
@@ -97,8 +104,64 @@ pub fn load_hosts() -> HashSet<String> {
     hosts
 }
 
+pub fn save_service(host: &str, port: u16, service: &str) {
+    let db_file = "";
+    let entry = format!("{}:{}:{}", host, port, service);
+
+    let mut services = HashSet::new();
+
+    if Path::new(db_file).exists() {
+        if let Ok(mut file) = File::open(db_file) {
+            let mut contents = String::new();
+            if file.read_to_string(&mut contents).is_ok() {
+                for line in contents.lines() {
+                    services.insert(line.trim().to_string());
+                }
+            }
+        }
+    }
+
+    if !services.contains(&entry) {
+        services.insert(entry);
+
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(db_file)
+            .unwrap_or_else(|_| panic!("Could not open database file: {}", db_file));
+
+        for s in services {
+            writeln!(file, "{}", s).unwrap();
+        }
+    }
+}
+
 // load discovered services from the database
 pub fn load_services() -> Vec<(String, u16, String)> {
     let db_file = "";
     let mut services = Vec::new();
+
+    if Path::new(db_file).exists() {
+        let mut file = match File::open(db_file) {
+            Ok(file) => file,
+            Err(_) => return services,
+        };
+
+        let mut contents = String::new();
+        if file.read_to_string(&mut contents).is_ok() {
+            for line in contents.lines() {
+                let parts: Vec<&str> = lines.split(':').collect();
+                if parts.len() >= 3 {
+                    let host = parts[0].to_string();
+                    if let Ok(port) = parts[1].parse::<u16>() {
+                        let service = parts[2..].join(":");
+                        services.push((host, port, service));
+                    }
+                }
+            }
+        }
+    }
+
+    services
 }
