@@ -1,25 +1,17 @@
-use std::process::{Command, Stdio};
+use std::process::{Command as ProcessCommand};
 
 //Check if a host is alive using ping
-pub fn ping_host(ip: &str) -> bool {
-    let args = if cfg!(target_os = "windoes") {
-        vec!["-n", "1", "-w", "500", ip]
+pub fn ping_host(host: &str) -> bool {
+    let args = if cfg!(target_os = "windows") {
+        vec!["-n", "1", "-w", "1000", host]
     } else {
-        vec!["-c", "1", "-W", "1", ip]
+        vec!["-c", "1", "-W", "1", host]
     };
 
-    let output = Command::new(if cfg!(target_os = "windows") {
-        "ping"
-    } else {
-        "ping"
-    })
-    .args(&args)
-    .stdout(Stdio::null())
-    .stderr(Stdio::null())
-    .status();
+    let output = ProcessCommand::new("ping").args(&args).output();
 
     match output {
-        Ok(status) => status.success(),
+        Ok(output) => output.status.success(),
         Err(_) => false,
     }
 }

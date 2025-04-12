@@ -1,6 +1,6 @@
 use clap::{Command, Arg};
 use std::net::{IpAddr, ToSocketAddrs};
-use std::process::{Command, Stdio};
+use std::process::{Command as ProcessCommand, Stdio};
 use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
@@ -36,7 +36,7 @@ fn main() {
                                 .help("")
                                 .short('p')
                                 .long("ports")
-                                .takes_value(true)
+                                .value_parser(clap::value_parser!(String))
                                 .default_value("1-1000"),
                         ),
                 )

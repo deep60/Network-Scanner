@@ -1,10 +1,10 @@
 use std::net::IpAddr;
-use std::process::Command;
+use std::process::{Command as ProcessCommand};
 use std::str::FromStr;
 
 //Try DNS zone transfer
 pub fn attempt_zone_transfer(domain: &str) -> Vec<String> {
-    let output = Command::new("dig")
+    let output = ProcessCommand::new("dig")
         .args(&["AXFR", domain, "@ns1.target.com"])
         .output();
 
@@ -43,7 +43,7 @@ pub fn discover_subdomains(domain: &str) -> Vec<String> {
 
 //Resolve hostname to IP
 pub fn resolve_host(hostname: &str) -> Option<IpAddr> {
-    let output = Command::new("dig").args(&["short", hostname, "A"]).output();
+    let output = ProcessCommand::new("dig").args(&["short", hostname, "A"]).output();
 
     match output {
         Ok(output) => {
