@@ -7,6 +7,6 @@ repository = "https://github.com/deep60/network_scanner"
 license = "MIT"
 
 [dependencies]
-clap = "4.5.35"
-pcap = "0.9.0"
-pnet = "0.9.0"
+clap = { version = "4.5.35", features = ["derive"] }
+pcap = "1.1.0"
+pnet = "0.35.0"

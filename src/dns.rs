@@ -14,7 +14,7 @@ pub fn attempt_zone_transfer(domain: &str) -> Vec<String> {
             if output.status.success() {
                 let output_str = String::from_utf8_lossy(&output.stdout);
                 for line in output_str.lines() {
-                    if !line.start_with(';') && !line.is_empty() {
+                    if !line.starts_with(';') && !line.is_empty() {
                         results.push(line.to_string());
                     }
                 }
@@ -34,7 +34,7 @@ pub fn discover_subdomains(domain: &str) -> Vec<String> {
         "pop3", "imap", "forum", "stage", "dev", "demo",
     ];
     let mut subdomains = Vec::new();
-    for prefixes in common_prefixes {
+    for prefix in common_prefixes {
         let subdomain = format!("{}.{}", prefix, domain);
         subdomains.push(subdomain);
     }

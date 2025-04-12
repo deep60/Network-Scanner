@@ -64,7 +64,7 @@ pub fn generate_ip_range(base_ip: IpAddr, prefix: u8) -> Vec<IpAddr> {
 //Save a discovered host to the database
 pub fn save_host(host: &str) {
     let db_file = "";
-    let mut hosts = load_host();
+    let mut hosts = load_hosts();
 
     if !hosts.contains(host) {
         hosts.insert(host.to_string());
@@ -151,7 +151,7 @@ pub fn load_services() -> Vec<(String, u16, String)> {
         let mut contents = String::new();
         if file.read_to_string(&mut contents).is_ok() {
             for line in contents.lines() {
-                let parts: Vec<&str> = lines.split(':').collect();
+                let parts: Vec<&str> = line.split(':').collect();
                 if parts.len() >= 3 {
                     let host = parts[0].to_string();
                     if let Ok(port) = parts[1].parse::<u16>() {

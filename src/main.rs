@@ -1,6 +1,10 @@
-use std::{net::ToSocketAddrs, os::unix::thread, string, sync::mpsc::channel, thread, vec};
-
-use clap::{App, Arg, SubCommand};
+use clap::{Command, Arg};
+use std::net::{IpAddr, ToSocketAddrs};
+use std::process::{Command, Stdio};
+use std::str::FromStr;
+use std::sync::mpsc::{channel, Sender};
+use std::thread;
+use std::time::Duration;
 
 mod dns;
 mod ping;
@@ -8,72 +12,72 @@ mod port_scan;
 mod utils;
 
 fn main() {
-    let app = App::new("NetworkScan")
+    let app = Command::new("NetworkScan")
         .version("")
-        .author()
-        .about()
+        .author("")
+        .about("")
         .subcommand(
-            SubCommand::with_name("scan")
+            Command::new("scan")
                 .about("")
                 .subcommand(
-                    SubCommand::with_name("ping").about("").arg(
-                        Arg::with_name("cidr")
+                    Command::new("ping").about("").arg(
+                        Arg::new("cidr")
                             .help("CIDR notation, eg 192.168.1.0")
                             .required(true)
                             .index(1),
                     ),
                 )
                 .subcommand(
-                    SubCommand::with_name("portscan")
+                    Command::new("portscan")
                         .about("")
-                        .arg(Arg::with_name("target").help("").required(true).index(1))
+                        .arg(Arg::new("target").help("").required(true).index(1))
                         .arg(
-                            Arg::with_name("ports")
+                            Arg::new("ports")
                                 .help("")
-                                .short("p")
+                                .short('p')
                                 .long("ports")
                                 .takes_value(true)
                                 .default_value("1-1000"),
                         ),
                 )
                 .subcommand(
-                    SubCommand::with_name("dns").about("DNS enumeration").arg(
-                        Arg::with_name("domain")
+                    Command::new("dns").about("DNS enumeration").arg(
+                        Arg::new("domain")
                             .help("Domain to enumerate")
-                            .required(help)
+                            .required(true)
                             .index(1),
                     ),
                 ),
         )
         .subcommand(
-            SubCommand::with_name("show")
+            Command::new("show")
                 .about("")
-                .subcommand(SubCommand::with_name("hosts").about("Show discovered hosts"))
-                .subcommand(SubCommand::with_name("services").about("Show discovered services")),
+                .subcommand(Command::new("hosts").about("Show discovered hosts"))
+                .subcommand(Command::new("services").about("Show discovered services")),
         );
 
     let matches = app.get_matches();
 
     match matches.subcommand() {
-        ("scan", Some(scan_matches)) => match scan_matches.subcommand() {
-            ("ping", Some(ping_matches)) => {
-                let cidr = ping_matches.value_of("cidr").unwrap();
+        Some(("scan", scan_matches)) => match scan_matches.subcommand() {
+            Some(("ping", ping_matches)) => {
+                let cidr = ping_matches.get_one::<String>("cidr").unwrap();
                 run_ping_scan(cidr);
             }
-            ("portscan", Some(portscan_matches)) => {
-                let target = portscan_matches.value_of("target").unwrap();
-                let ports = portscan_matches.value_of("ports").unwrap();
+            Some(("portscan", portscan_matches)) => {
+                let target = portscan_matches.get_one::<String>("target").unwrap();
+                let ports = portscan_matches.get_one::<String>("ports").unwrap();
                 run_port_scan(target, ports);
             }
-            ("dns", Some(dns_matches)) => {
-                let domain = dns_matches.value_of("domain").unwrap();
+            Some(("dns", dns_matches)) => {
+                let domain = dns_matches.get_one::<String>("domain").unwrap();
                 run_dns_scan(domain);
             }
             _ => println!("Unknown scan subcommand"),
         },
-        ("show", Some(show_matches)) => match show_matches.subcommand() {
-            ("hosts", Some(_)) => show_hosts(),
-            ("services", Some(_)) => show_services(),
+        Some(("show", show_matches)) => match show_matches.subcommand() {
+            Some(("hosts", _)) => show_hosts(),
+            Some(("services", _)) => show_services(),
             _ => println!("Unknown show subcommand"),
         },
         _ => println!("Unknown command, Use --help for use information."),
