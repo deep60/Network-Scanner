@@ -12,8 +12,8 @@ fn get_db_path(filename: &str) -> String {
     db_path.to_str().unwrap().to_string()
 }
 
-const HOSTS_DB_FILE: &str = ".network_scanner_hosts.db";
-const SERVICES_DB_FILE: &str = ".network_scanner_services.db";
+const HOSTS_DB_FILE: &str = "network_scanner_hosts.db";
+const SERVICES_DB_FILE: &str = "network_scanner_services.db";
 
 pub fn parse_cidr(cidr: &str) -> Result<(IpAddr, u8), String> {
     let parts: Vec<&str> = cidr.split('/').collect();
@@ -74,7 +74,6 @@ pub fn generate_ip_range(base_ip: IpAddr, prefix: u8) -> Vec<IpAddr> {
 //Save a discovered host to the database
 pub fn save_host(host: &str) {
     let mut hosts = load_hosts();
-    let db_path = get_db_path(HOSTS_DB_FILE);
 
     if !hosts.contains(host) {
         hosts.insert(host.to_string());
@@ -83,8 +82,8 @@ pub fn save_host(host: &str) {
             .write(true)
             .create(true)
             .truncate(true)
-            .open(&db_path)
-            .unwrap_or_else(|_| panic!("Could not open database file: {}", db_path));
+            .open(HOSTS_DB_FILE)
+            .unwrap_or_else(|_| panic!("Could not open database file: {}", HOSTS_DB_FILE));
 
         for h in hosts {
             writeln!(file, "{}", h).unwrap();
@@ -95,10 +94,9 @@ pub fn save_host(host: &str) {
 // load discovered hosts from database
 pub fn load_hosts() -> HashSet<String> {
     let mut hosts = HashSet::new();
-    let db_path = get_db_path(HOSTS_DB_FILE);
 
-    if Path::new(&db_path).exists() {
-        let mut file = match File::open(&db_path) {
+    if Path::new(HOSTS_DB_FILE).exists() {
+        let mut file = match File::open(HOSTS_DB_FILE) {
             Ok(file) => file,
             Err(_) => return hosts,
         };
@@ -116,12 +114,11 @@ pub fn load_hosts() -> HashSet<String> {
 
 pub fn save_service(host: &str, port: u16, service: &str) {
     let entry = format!("{}:{}:{}", host, port, service);
-    let db_path = get_db_path(SERVICES_DB_FILE);
 
     let mut services = HashSet::new();
 
-    if Path::new(&db_path).exists() {
-        if let Ok(mut file) = File::open(&db_path) {
+    if Path::new(SERVICES_DB_FILE).exists() {
+        if let Ok(mut file) = File::open(SERVICES_DB_FILE) {
             let mut contents = String::new();
             if file.read_to_string(&mut contents).is_ok() {
                 for line in contents.lines() {
@@ -138,8 +135,8 @@ pub fn save_service(host: &str, port: u16, service: &str) {
             .write(true)
             .create(true)
             .truncate(true)
-            .open(&db_path)
-            .unwrap_or_else(|_| panic!("Could not open database file: {}", db_path));
+            .open(SERVICES_DB_FILE)
+            .unwrap_or_else(|_| panic!("Could not open database file: {}", SERVICES_DB_FILE));
 
         for s in services {
             writeln!(file, "{}", s).unwrap();
@@ -150,10 +147,9 @@ pub fn save_service(host: &str, port: u16, service: &str) {
 // load discovered services from the database
 pub fn load_services() -> Vec<(String, u16, String)> {
     let mut services = Vec::new();
-    let db_path = get_db_path(SERVICES_DB_FILE);
 
-    if Path::new(&db_path).exists() {
-        let mut file = match File::open(&db_path) {
+    if Path::new(SERVICES_DB_FILE).exists() {
+        let mut file = match File::open(SERVICES_DB_FILE) {
             Ok(file) => file,
             Err(_) => return services,
         };
