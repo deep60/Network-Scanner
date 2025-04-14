@@ -7,40 +7,10 @@ use std::str::FromStr;
 use dirs::home_dir;
 
 fn get_db_path(filename: &str) -> String {
-    // Get the home directory
+    println!("Getting path for database file: {}", filename);
     let home = match home_dir() {
-        Some(path) => path,
-        None => {
-            // If home dir can't be found, use the current directory
-            eprintln!("Warning: Could not get home directory, using current directory");
-            std::env::current_dir().unwrap_or_else(|_| {
-                Path::new(".").to_path_buf()
-            })
-        }
-    };
-    
-    // Create a dedicated directory for our app
-    let app_dir = home.join(".network_scanner");
-    
-    // Create the directory if it doesn't exist
-    if !app_dir.exists() {
-        std::fs::create_dir_all(&app_dir).unwrap_or_else(|e| {
-            eprintln!("Warning: Could not create app directory: {}", e);
-        });
-    }
-    
-    // Join the filename to the app directory
-    let db_path = app_dir.join(filename);
-    
-    // Convert to string
-    match db_path.to_str() {
-        Some(s) => s.to_string(),
-        None => {
-            eprintln!("Warning: Path contains invalid UTF-8, using local file");
-            filename.to_string()
-        }
-    }
-}
+        Some(path) => {
+            println!("Home directory found: {:?}", path);
             path
         },
         None => {
@@ -53,8 +23,17 @@ fn get_db_path(filename: &str) -> String {
         }
     };
     
-    let db_path = home.join(filename);
+    let db_path = home.join(".network_scanner").join(filename);
     println!("Full database path: {:?}", db_path);
+    
+    // Ensure parent directory exists
+    if let Some(parent) = db_path.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).unwrap_or_else(|e| {
+                println!("Warning: Could not create parent directory: {}", e);
+            });
+        }
+    }
     
     db_path.to_str().unwrap_or_else(|| {
         println!("Path contains invalid UTF-8");
@@ -108,23 +87,13 @@ pub fn generate_ip_range(base_ip: IpAddr, prefix: u8) -> Vec<IpAddr> {
                 broadcast
             };
 
-        let hosts_db_path = get_db_path(HOSTS_DB_FILE);
-        
-        // Ensure the parent directory exists
-        if let Some(parent) = Path::new(&hosts_db_path).parent() {
-            if !parent.exists() {
-                std::fs::create_dir_all(parent).unwrap_or_else(|e| {
-                    eprintln!("Warning: Could not create parent directory: {}", e);
-                });
-            }
-        }
-        
-        let mut file = OpenOptions::new()
+            for i in start..=end {
+                let octets = i.to_be_bytes();
                 ips.push(IpAddr::V4(std::net::Ipv4Addr::from(octets)));
             }
         }
         IpAddr::V6(_) => {
-            println!("IPv6 ranges not fully supportes yet");
+            println!("IPv6 ranges not fully supported yet");
         }
     }
 
@@ -172,18 +141,8 @@ pub fn load_hosts() -> HashSet<String> {
 
     hosts
 }
-    let services_db_path = get_db_path(SERVICES_DB_FILE);
-    
-    // Ensure the parent directory exists
-    if let Some(parent) = Path::new(&services_db_path).parent() {
-        if !parent.exists() {
-            std::fs::create_dir_all(parent).unwrap_or_else(|e| {
-                eprintln!("Warning: Could not create parent directory: {}", e);
-            });
-        }
-    }
-    
-    let mut file = OpenOptions::new()
+
+pub fn save_service(host: &str, port: u16, service: &str) {
     let entry = format!("{}:{}:{}", host, port, service);
 
     let mut services = HashSet::new();
@@ -214,6 +173,7 @@ pub fn load_hosts() -> HashSet<String> {
         writeln!(file, "{}", s).unwrap();
     }
 }
+
 pub fn load_services() -> Vec<(String, u16, String)> {
     let mut services = Vec::new();
 
