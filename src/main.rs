@@ -137,8 +137,8 @@ fn run_port_scan(target: &str, port_range: &str) {
     println!("Scanning ports on: {} (range: {})", target, port_range);
 
     //Parse port range
-    let (start_port, end_port) = match parse_port_range(port_range) {
-        Ok(range) => range,
+    let ports = match parse_port_range(port_range) {
+        Ok(ports) => ports,
         Err(e) => {
             eprintln!("Error parsing port range: {}", e);
             return;
@@ -178,7 +178,7 @@ fn run_port_scan(target: &str, port_range: &str) {
     let (tx, rx) = channel();
     let mut threads = vec![];
 
-    for port in start_port..=end_port {
+    for port in ports {
         let tx = tx.clone();
         let ip = target_ip.clone();
 
@@ -272,22 +272,43 @@ fn show_services() {
     }
 }
 
-// Helper func to parse port range (e.g., "1-1000")
-fn parse_port_range(range: &str) -> Result<(u16, u16), String> {
-    let parts: Vec<&str> = range.split('-').collect();
-    if parts.len() == 1 {
-        //Single port
-        let port = parts[0].parse::<u16>().map_err(|e| e.to_string())?;
-        Ok((port, port))
-    } else if parts.len() == 2 {
-        // Port range
-        let start = parts[0].parse::<u16>().map_err(|e| e.to_string())?;
-        let end = parts[1].parse::<u16>().map_err(|e| e.to_string())?;
-        if start > end {
-            return Err("Start port cannot be greater than end port".to_string());
+// Helper func to parse port range (e.g., "1-1000" or "20-25,80,443")
+fn parse_port_range(range: &str) -> Result<Vec<u16>, String> {
+    let mut ports = Vec::new();
+    
+    // Split by comma for multiple ranges/ports
+    for part in range.split(',') {
+        let range_parts: Vec<&str> = part.split('-').collect();
+        
+        if range_parts.len() == 1 {
+            // Single port
+            let port = range_parts[0].parse::<u16>().map_err(|e| e.to_string())?;
+            ports.push(port);
+        } else if range_parts.len() == 2 {
+            // Port range
+            let start = range_parts[0].parse::<u16>().map_err(|e| e.to_string())?;
+            let end = range_parts[1].parse::<u16>().map_err(|e| e.to_string())?;
+            
+            if start > end {
+                return Err("Start port cannot be greater than end port".to_string());
+            }
+            
+            // Add all ports in the range
+            for port in start..=end {
+                ports.push(port);
+            }
+        } else {
+            return Err("Invalid port range format".to_string());
         }
-        Ok((start, end))
-    } else {
-        Err("Invalid port range format".to_string())
     }
+    
+    if ports.is_empty() {
+        return Err("No valid ports specified".to_string());
+    }
+    
+    // Remove duplicates
+    ports.sort();
+    ports.dedup();
+    
+    Ok(ports)
 }
