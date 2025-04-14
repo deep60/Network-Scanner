@@ -7,36 +7,31 @@ use std::str::FromStr;
 use dirs::home_dir;
 
 fn get_db_path(filename: &str) -> String {
-    println!("Getting path for database file: {}", filename);
     let home = match home_dir() {
-        Some(path) => {
-            println!("Home directory found: {:?}", path);
-            path
-        },
+        Some(path) => path,
         None => {
-            println!("Failed to get home directory");
-            // Fallback to a location we know exists - current directory
+            // If home dir can't be found, use the current directory
+            eprintln!("Warning: Could not get home directory, using current directory");
             std::env::current_dir().unwrap_or_else(|_| {
-                println!("Failed to get current directory too");
+                eprintln!("Warning: Failed to get current directory, using local directory");
                 Path::new(".").to_path_buf()
             })
         }
     };
     
     let db_path = home.join(".network_scanner").join(filename);
-    println!("Full database path: {:?}", db_path);
     
     // Ensure parent directory exists
     if let Some(parent) = db_path.parent() {
         if !parent.exists() {
             std::fs::create_dir_all(parent).unwrap_or_else(|e| {
-                println!("Warning: Could not create parent directory: {}", e);
+                eprintln!("Warning: Could not create parent directory: {}", e);
             });
         }
     }
     
     db_path.to_str().unwrap_or_else(|| {
-        println!("Path contains invalid UTF-8");
+        eprintln!("Warning: Path contains invalid UTF-8, using local file");
         "."  // Fallback to current directory as a last resort
     }).to_string()
 }

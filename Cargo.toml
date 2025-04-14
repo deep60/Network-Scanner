@@ -10,3 +10,4 @@ license = "MIT"
 clap = { version = "4.5.35", features = ["derive"] }
 pcap = "1.1.0"
 pnet = "0.35.0"
+dirs = "5.0.1"
