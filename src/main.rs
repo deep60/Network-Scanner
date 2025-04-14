@@ -146,20 +146,32 @@ fn run_port_scan(target: &str, port_range: &str) {
     };
 
     //Resolve the target to an IP address
-    let addrs = match target.to_socket_addrs() {
-        Ok(addrs) => addrs.collect::<Vec<_>>(),
-        Err(e) => {
-            eprintln!("Error resolving target: {}", e);
-            return;
+    let target_ip = match IpAddr::from_str(target) {
+        Ok(ip) => {
+            // Successfully parsed as an IP address
+            ip
+        },
+        Err(_) => {
+            // If not a valid IP address, try to resolve as hostname
+            // to_socket_addrs requires a port, so we add a dummy port
+            let target_with_port = format!("{}:80", target);
+            let addrs = match target_with_port.to_socket_addrs() {
+                Ok(addrs) => addrs.collect::<Vec<_>>(),
+                Err(e) => {
+                    eprintln!("Error resolving target: {}", e);
+                    return;
+                }
+            };
+
+            if addrs.is_empty() {
+                eprintln!("Could not resolve target");
+                return;
+            }
+
+            addrs[0].ip()
         }
     };
-
-    if addrs.is_empty() {
-        eprintln!("Could not resolve target");
-        return;
-    }
-
-    let target_ip = addrs[0].ip();
+    
     println!("Resolved {} to {}", target, target_ip);
 
     //create threads for port scanning
