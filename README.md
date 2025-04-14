@@ -1,4 +1,4 @@
-# RustScan
+# NetworkScanner
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Rust Version](https://img.shields.io/badge/rust-1.60%2B-orange.svg)
