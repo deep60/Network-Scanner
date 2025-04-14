@@ -7,9 +7,59 @@ use std::str::FromStr;
 use dirs::home_dir;
 
 fn get_db_path(filename: &str) -> String {
-    let home = home_dir().expect("Could not get home directory");
+    // Get the home directory
+    let home = match home_dir() {
+        Some(path) => path,
+        None => {
+            // If home dir can't be found, use the current directory
+            eprintln!("Warning: Could not get home directory, using current directory");
+            std::env::current_dir().unwrap_or_else(|_| {
+                Path::new(".").to_path_buf()
+            })
+        }
+    };
+    
+    // Create a dedicated directory for our app
+    let app_dir = home.join(".network_scanner");
+    
+    // Create the directory if it doesn't exist
+    if !app_dir.exists() {
+        std::fs::create_dir_all(&app_dir).unwrap_or_else(|e| {
+            eprintln!("Warning: Could not create app directory: {}", e);
+        });
+    }
+    
+    // Join the filename to the app directory
+    let db_path = app_dir.join(filename);
+    
+    // Convert to string
+    match db_path.to_str() {
+        Some(s) => s.to_string(),
+        None => {
+            eprintln!("Warning: Path contains invalid UTF-8, using local file");
+            filename.to_string()
+        }
+    }
+}
+            path
+        },
+        None => {
+            println!("Failed to get home directory");
+            // Fallback to a location we know exists - current directory
+            std::env::current_dir().unwrap_or_else(|_| {
+                println!("Failed to get current directory too");
+                Path::new(".").to_path_buf()
+            })
+        }
+    };
+    
     let db_path = home.join(filename);
-    db_path.to_str().unwrap().to_string()
+    println!("Full database path: {:?}", db_path);
+    
+    db_path.to_str().unwrap_or_else(|| {
+        println!("Path contains invalid UTF-8");
+        "."  // Fallback to current directory as a last resort
+    }).to_string()
 }
 
 const HOSTS_DB_FILE: &str = "network_scanner_hosts.db";
@@ -58,8 +108,18 @@ pub fn generate_ip_range(base_ip: IpAddr, prefix: u8) -> Vec<IpAddr> {
                 broadcast
             };
 
-            for i in start..=end {
-                let octets = [(i >> 24) as u8, (i >> 16) as u8, (i >> 8) as u8, i as u8];
+        let hosts_db_path = get_db_path(HOSTS_DB_FILE);
+        
+        // Ensure the parent directory exists
+        if let Some(parent) = Path::new(&hosts_db_path).parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent).unwrap_or_else(|e| {
+                    eprintln!("Warning: Could not create parent directory: {}", e);
+                });
+            }
+        }
+        
+        let mut file = OpenOptions::new()
                 ips.push(IpAddr::V4(std::net::Ipv4Addr::from(octets)));
             }
         }
@@ -78,12 +138,13 @@ pub fn save_host(host: &str) {
     if !hosts.contains(host) {
         hosts.insert(host.to_string());
 
+        let hosts_db_path = get_db_path(HOSTS_DB_FILE);
         let mut file = OpenOptions::new()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(HOSTS_DB_FILE)
-            .unwrap_or_else(|_| panic!("Could not open database file: {}", HOSTS_DB_FILE));
+            .open(&hosts_db_path)
+            .unwrap_or_else(|_| panic!("Could not open database file: {}", hosts_db_path));
 
         for h in hosts {
             writeln!(file, "{}", h).unwrap();
@@ -94,9 +155,9 @@ pub fn save_host(host: &str) {
 // load discovered hosts from database
 pub fn load_hosts() -> HashSet<String> {
     let mut hosts = HashSet::new();
-
-    if Path::new(HOSTS_DB_FILE).exists() {
-        let mut file = match File::open(HOSTS_DB_FILE) {
+    let hosts_db_path = get_db_path(HOSTS_DB_FILE);
+    if Path::new(&hosts_db_path).exists() {
+        let mut file = match File::open(&hosts_db_path) {
             Ok(file) => file,
             Err(_) => return hosts,
         };
@@ -111,14 +172,25 @@ pub fn load_hosts() -> HashSet<String> {
 
     hosts
 }
-
-pub fn save_service(host: &str, port: u16, service: &str) {
+    let services_db_path = get_db_path(SERVICES_DB_FILE);
+    
+    // Ensure the parent directory exists
+    if let Some(parent) = Path::new(&services_db_path).parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).unwrap_or_else(|e| {
+                eprintln!("Warning: Could not create parent directory: {}", e);
+            });
+        }
+    }
+    
+    let mut file = OpenOptions::new()
     let entry = format!("{}:{}:{}", host, port, service);
 
     let mut services = HashSet::new();
-
-    if Path::new(SERVICES_DB_FILE).exists() {
-        if let Ok(mut file) = File::open(SERVICES_DB_FILE) {
+    
+    let services_db_path = get_db_path(SERVICES_DB_FILE);
+    if Path::new(&services_db_path).exists() {
+        if let Ok(mut file) = File::open(&services_db_path) {
             let mut contents = String::new();
             if file.read_to_string(&mut contents).is_ok() {
                 for line in contents.lines() {
@@ -128,28 +200,26 @@ pub fn save_service(host: &str, port: u16, service: &str) {
         }
     }
 
-    if !services.contains(&entry) {
-        services.insert(entry);
+    services.insert(entry);
+    
+    let services_db_path = get_db_path(SERVICES_DB_FILE);
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(&services_db_path)
+        .unwrap_or_else(|_| panic!("Could not open database file: {}", services_db_path));
 
-        let mut file = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(SERVICES_DB_FILE)
-            .unwrap_or_else(|_| panic!("Could not open database file: {}", SERVICES_DB_FILE));
-
-        for s in services {
-            writeln!(file, "{}", s).unwrap();
-        }
+    for s in services {
+        writeln!(file, "{}", s).unwrap();
     }
 }
-
-// load discovered services from the database
 pub fn load_services() -> Vec<(String, u16, String)> {
     let mut services = Vec::new();
 
-    if Path::new(SERVICES_DB_FILE).exists() {
-        let mut file = match File::open(SERVICES_DB_FILE) {
+    let services_db_path = get_db_path(SERVICES_DB_FILE);
+    if Path::new(&services_db_path).exists() {
+        let mut file = match File::open(&services_db_path) {
             Ok(file) => file,
             Err(_) => return services,
         };
